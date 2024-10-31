@@ -560,6 +560,7 @@ class FluxPipeline(
         callback_on_step_end_tensor_inputs: List[str] = ["latents"],
         max_sequence_length: int = 512,
         compile = False,
+        fullgraph=False,
         cache = False,
         sway_sampling_coeff = 0
     ):
@@ -733,10 +734,10 @@ class FluxPipeline(
                 # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
                 timestep = t.expand(latents.shape[0]).to(latents.dtype)
                 if compile:
-                    compiled_transformer = torch.compile(self.transformer, dynamic=True, fullgraph=True, mode="max-autotune")
+                    compiled_transformer = torch.compile(self.transformer, dynamic=False, fullgraph=fullgraph, mode="reduce-overhead")
                 else:
                     compiled_transformer = self.transformer
-                if cache and (i > num_inference_steps//2, i%2==0, i != (num_inference_steps-1)):
+                if cache and i > num_inference_steps // 2 and i % 2 == 0 and i != (num_inference_steps - 1):
                     noise_pred = noise_pred_old
                 else:
                     noise_pred = compiled_transformer(
